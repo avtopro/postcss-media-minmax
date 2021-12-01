@@ -1,11 +1,5 @@
 # PostCSS Media Minmax
 
-[![CSS Standard Status](https://cssdb.org/badge/media-query-ranges.svg)](https://cssdb.org/#media-query-ranges)
-[![Build Status](https://travis-ci.org/postcss/postcss-media-minmax.svg?branch=master)](https://travis-ci.org/postcss/postcss-media-minmax) 
-[![NPM Downloads](https://img.shields.io/npm/dm/postcss-media-minmax.svg?style=flat)](https://www.npmjs.com/package/postcss-media-minmax) 
-[![NPM Version](https://img.shields.io/npm/v/postcss-media-minmax.svg?style=flat)](https://www.npmjs.com/package/postcss-media-minmax) 
-[![License](https://img.shields.io/npm/l/postcss-media-minmax.svg?style=flat)](https://opensource.org/licenses/MIT) 
-
 > Writing simple and graceful media queries!
 
 The `min-width`, `max-width` and many other properties of media queries are really confusing. I want to cry every time I see them. But right now according to the new specs, you can use more intuitive `<=` or `>=` to replace the  `min-`/`max-` prefixes in media queries.
@@ -87,6 +81,31 @@ You will get:
 ![syntax](https://gtms03.alicdn.com/tps/i3/TB1Rje0HXXXXXXeXpXXccZJ0FXX-640-290.png)
 
 PostCSS Media Minmax hasn't implemented syntax such as `200px > = width` or `200px < = width` currently because its readability is not good enough yet.
+
+## Extended syntax
+
+### customValueRegExp
+
+`customValueRegExp` option makes it possible to use extended syntaxes (like Less or Sass variables)
+in media queries.
+
+- Less variable RegExp: `/@\w[\w\d_-]*/i`
+- Sass variable RegExp: `/\$\w[\w\d_-]*/i`
+
+Example:
+
+```
+require('postcss-media-minmax')({
+    customValueRegExp: /@\w[\w\d_-]*/i
+})
+
+// Will successfully match media queries like the following:
+// @media (@screen-sm < width <= @screen-md)
+// @media (@screen-sm < width < 1024px)
+// @media (width > @breakpoint)
+```
+
+Variables names remains untouched in the output and should be processed with corresponding syntax parser.
 
 ## [Values](https://drafts.csswg.org/mediaqueries/#values)
  

@@ -26,7 +26,16 @@ const minmax = {
   '<': 'max'
 };
 
-function create_query(name, gtlt, eq, value) {
+const mf_value_template = '-?\\d*\\.?(?:\\s*\\/?\\s*)?\\d+[a-z]*';
+
+const mf_rule_single_template = '\\(\\s*([a-z-]+?)\\s*([<>])(=?)\\s*({value})\\s*\\)';
+
+const mf_rule_double_template = '\\(\\s*({value})\\s*(<|>)(=?)\\s*([a-z-]+)\\s*(<|>)(=?)\\s*({value})\\s*\\)';
+
+function create_query(name, gtlt, eq, value, customValueRegExp) {
+  if (customValueRegExp?.test(value)) {
+    return '(' + minmax[gtlt] + '-' + name + ': ' + value + ')';
+  }
   return value.replace(/([-\d\.]+)(.*)/, function (_match, number, unit) {
     const initialNumber = parseFloat(number);
 
@@ -48,7 +57,13 @@ function create_query(name, gtlt, eq, value) {
   });
 }
 
-function transform(rule) {
+/**
+ * 
+ * @param {Object} rule
+ * @param {Object} opts
+ * @returns
+ */
+function transform(rule, opts) {
   /**
    * 转换 <mf-name> <|>= <mf-value>
    *    $1  $2   $3
@@ -63,9 +78,9 @@ function transform(rule) {
   // The value doesn't support negative values
   // But -0 is always equivalent to 0 in CSS, and so is also accepted as a valid <mq-boolean> value.
 
-  rule.params = rule.params.replace(/\(\s*([a-z-]+?)\s*([<>])(=?)\s*((?:-?\d*\.?(?:\s*\/?\s*)?\d+[a-z]*)?)\s*\)/gi, function($0, $1, $2, $3, $4) {
+  rule.params = rule.params.replace(opts.ruleSingleRegExp, function($0, $1, $2, $3, $4) {
     if (feature_name.indexOf($1) > -1) {
-      return create_query($1, $2, $3, $4);
+      return create_query($1, $2, $3, $4, opts.customValueRegExp);
     }
     // If it is not the specified attribute, don't replace
     return $0;
@@ -80,7 +95,7 @@ function transform(rule) {
    * (900px >= width >= 300px)  => (min-width: 300px) and (max-width: 900px)
    */
 
-  rule.params = rule.params.replace(/\(\s*((?:-?\d*\.?(?:\s*\/?\s*)?\d+[a-z]*)?)\s*(<|>)(=?)\s*([a-z-]+)\s*(<|>)(=?)\s*((?:-?\d*\.?(?:\s*\/?\s*)?\d+[a-z]*)?)\s*\)/gi, function($0, $1, $2, $3, $4, $5, $6, $7) {
+  rule.params = rule.params.replace(opts.ruleDoubleRegExp, function($0, $1, $2, $3, $4, $5, $6, $7) {
 
     if (feature_name.indexOf($4) > -1) {
       if ($2 === '<' && $5 === '<' || $2 === '>' && $5 === '>') {
@@ -99,7 +114,7 @@ function transform(rule) {
           equals_for_max = $3;
         }
 
-        return create_query($4, '>', equals_for_min, min) + ' and ' + create_query($4, '<', equals_for_max, max);
+        return create_query($4, '>', equals_for_min, min, opts.customValueRegExp) + ' and ' + create_query($4, '<', equals_for_max, max, opts.customValueRegExp);
       }
     }
     // If it is not the specified attribute, don't replace
@@ -107,16 +122,37 @@ function transform(rule) {
   });
 }
 
-module.exports = () => ({
-  postcssPlugin: 'postcss-media-minmax',
-  AtRule: {
-    media: (atRule) => {
-      transform(atRule);
+/**
+ * @param {Object} [opts]
+ * @param {string} [opts.customValueRegExp] - RegExp to match against non-standard syntax media query value.
+ * @returns
+ */
+module.exports = (opts = {}) => {
+  // Extract customValueRegExp body
+  const customValueTemplate = opts.customValueRegExp?.toString().match(/\/(.*)\//)?.[1];
+  // Concatenate standard value syntax with custom
+  const valueTemplate = [mf_value_template, customValueTemplate]
+    .filter(v => typeof v == 'string' && v != '')
+    .map(template => `(?:${template})?`)
+    .join('|');
+
+  const transformOpts = {
+    customValueRegExp: opts.customValueRegExp,
+    ruleSingleRegExp: new RegExp(mf_rule_single_template.replaceAll('{value}', valueTemplate), 'gi'),
+    ruleDoubleRegExp: new RegExp(mf_rule_double_template.replaceAll('{value}', valueTemplate), 'gi'),
+  };
+
+  return {
+    postcssPlugin: 'postcss-media-minmax',
+    AtRule: {
+      media: (atRule) => {
+        transform(atRule, transformOpts)
+      },
+      'custom-media': (atRule) => {
+        transform(atRule, transformOpts)
+      },
     },
-    'custom-media': (atRule) => {
-      transform(atRule);
-    },
-  },
-});
+  }
+};
 
 module.exports.postcss = true
