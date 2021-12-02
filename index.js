@@ -32,8 +32,16 @@ const mf_rule_single_template = '\\(\\s*([a-z-]+?)\\s*([<>])(=?)\\s*({value})\\s
 
 const mf_rule_double_template = '\\(\\s*({value})\\s*(<|>)(=?)\\s*([a-z-]+)\\s*(<|>)(=?)\\s*({value})\\s*\\)';
 
-function create_query(name, gtlt, eq, value, customValueRegExp) {
+function create_query(name, gtlt, eq, value, { customValueRegExp, useCalc }) {
   if (customValueRegExp?.test(value)) {
+    // if eq if false, then concatenate "+ 0.001" to the value
+    if (!eq) {
+      const op = (power[gtlt] < 0 ? ' - ' : ' + ');
+      // use native CSS calc(), or leave calculations for the syntax processor
+      value = useCalc
+        ? 'calc(' + value + op + step + feature_unit[name] + ')'
+        : value + op + step;
+    }
     return '(' + minmax[gtlt] + '-' + name + ': ' + value + ')';
   }
   return value.replace(/([-\d\.]+)(.*)/, function (_match, number, unit) {
@@ -80,7 +88,7 @@ function transform(rule, opts) {
 
   rule.params = rule.params.replace(opts.ruleSingleRegExp, function($0, $1, $2, $3, $4) {
     if (feature_name.indexOf($1) > -1) {
-      return create_query($1, $2, $3, $4, opts.customValueRegExp);
+      return create_query($1, $2, $3, $4, opts);
     }
     // If it is not the specified attribute, don't replace
     return $0;
@@ -114,7 +122,7 @@ function transform(rule, opts) {
           equals_for_max = $3;
         }
 
-        return create_query($4, '>', equals_for_min, min, opts.customValueRegExp) + ' and ' + create_query($4, '<', equals_for_max, max, opts.customValueRegExp);
+        return create_query($4, '>', equals_for_min, min, opts) + ' and ' + create_query($4, '<', equals_for_max, max, opts);
       }
     }
     // If it is not the specified attribute, don't replace
@@ -137,6 +145,7 @@ module.exports = (opts = {}) => {
     .join('|');
 
   const transformOpts = {
+    useCalc: opts.useCalc,
     customValueRegExp: opts.customValueRegExp,
     ruleSingleRegExp: new RegExp(mf_rule_single_template.replaceAll('{value}', valueTemplate), 'gi'),
     ruleDoubleRegExp: new RegExp(mf_rule_double_template.replaceAll('{value}', valueTemplate), 'gi'),
