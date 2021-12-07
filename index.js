@@ -147,8 +147,8 @@ module.exports = (opts = {}) => {
   const transformOpts = {
     useCalc: opts.useCalc,
     customValueRegExp: opts.customValueRegExp,
-    ruleSingleRegExp: new RegExp(mf_rule_single_template.replaceAll('{value}', valueTemplate), 'gi'),
-    ruleDoubleRegExp: new RegExp(mf_rule_double_template.replaceAll('{value}', valueTemplate), 'gi'),
+    ruleSingleRegExp: new RegExp(mf_rule_single_template.replace(/{value}/g, valueTemplate), 'gi'),
+    ruleDoubleRegExp: new RegExp(mf_rule_double_template.replace(/{value}/g, valueTemplate), 'gi'),
   };
 
   return {
