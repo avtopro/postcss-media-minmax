@@ -1,6 +1,6 @@
 {
   "name": "@avtopro/postcss-media-minmax",
-  "version": "5.3.0",
+  "version": "5.4.0",
   "description": "Using more intuitive `>=`, `<=`, `>`, `<` instead of media queries min/max prefix.",
   "scripts": {
     "test": "tape test"

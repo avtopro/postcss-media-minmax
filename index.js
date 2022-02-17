@@ -14,7 +14,7 @@ const feature_unit = {
 // Supported min-/max- attributes
 const feature_name = Object.keys(feature_unit);
 
-const step = .001; // smallest even number that won’t break complex queries (1in = 96px)
+const step = .02; // smallest even number that won’t break complex queries (1in = 96px)
 
 const power = {
   '>': 1,
